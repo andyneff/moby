@@ -104,7 +104,7 @@ func (s *VolumesService) Get(ctx context.Context, name string, getOpts ...opts.G
 }
 
 // Mount mounts the volume
-// Callers should specify a uniqe reference for each Mount/Unmount pair.
+// Callers should specify a unique reference for each Mount/Unmount pair.
 //
 // Example:
 // ```go

@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -28,11 +29,15 @@ var (
 		"o":      {}, // generic mount options
 		"device": {}, // device to mount from
 		"size":   {}, // quota size limit
+		"euid":   {}, // effective uid to be used when mounting
+		"egid":   {}, // effective gid to be used when mounting
 	}
 	mandatoryOpts = map[string][]string{
 		"device": {"type"},
 		"type":   {"device"},
 		"o":      {"device", "type"},
+		"euid":   {"device", "type"},
+		"egid":   {"device", "type"},
 	}
 )
 
@@ -41,10 +46,13 @@ type optsConfig struct {
 	MountOpts   string
 	MountDevice string
 	Quota       quota.Quota
+	Euid        int
+	Egid        int
 }
 
 func (o *optsConfig) String() string {
-	return fmt.Sprintf("type='%s' device='%s' o='%s' size='%d'", o.MountType, o.MountDevice, o.MountOpts, o.Quota.Size)
+	// return fmt.Sprintf("type='%s' device='%s' o='%s' size='%d'", o.MountType, o.MountDevice, o.MountOpts, o.Quota.Size)
+	return fmt.Sprintf("type='%s' device='%s' o='%s' size='%d' euid='%d' egid='%d'", o.MountType, o.MountDevice, o.MountOpts, o.Quota.Size, o.Euid, o.Egid)
 }
 
 func (r *Root) validateOpts(opts map[string]string) error {
@@ -105,6 +113,21 @@ func (v *localVolume) setOpts(opts map[string]string) error {
 		}
 		v.opts.Quota.Size = uint64(size)
 	}
+	if val, ok := opts["euid"]; ok {
+		euid, err := strconv.Atoi(val)
+		if err != nil {
+			return errdefs.InvalidParameter(err)
+		}
+		v.opts.Euid = euid
+	}
+	if val, ok := opts["egid"]; ok {
+		egid, err := strconv.Atoi(val)
+		if err != nil {
+			return errdefs.InvalidParameter(err)
+		}
+		v.opts.Egid = egid
+	}
+
 	return v.saveOpts()
 }
 

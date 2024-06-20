@@ -9,9 +9,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/containerd/log"
 	"github.com/docker/docker/api/types/events"
+	"github.com/docker/docker/errdefs"
 	mounttypes "github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/container"
 	"github.com/docker/docker/internal/cleanups"
@@ -63,7 +65,35 @@ func (daemon *Daemon) setupMounts(ctx context.Context, c *container.Container) (
 			return nil
 		}
 
+		val, euid_ok := m.Spec.VolumeOptions.DriverConfig.Options["euid"]
+		if euid_ok {
+			euid, err := strconv.Atoi(val)
+			if err != nil {
+				return nil, nil, errdefs.InvalidParameter(err)
+			}
+			fmt.Fprintln(os.Stderr, euid)
+			syscall.Seteuid(euid)
+		}
+		val, egid_ok := m.Spec.VolumeOptions.DriverConfig.Options["egid"]
+		if egid_ok {
+			egid, err := strconv.Atoi(val)
+			if err != nil {
+				return nil, nil, errdefs.InvalidParameter(err)
+			}
+			fmt.Fprintln(os.Stderr, egid)
+			syscall.Setegid(egid)
+		}
+
 		path, clean, err := m.Setup(ctx, c.MountLabel, daemon.idMapping.RootPair(), checkfunc)
+
+		// TODO: Use saved ID instead
+		if euid_ok {
+			syscall.Seteuid(0)
+		}
+		if egid_ok {
+			syscall.Setegid(0)
+		}
+
 		if err != nil {
 			return nil, nil, err
 		}
